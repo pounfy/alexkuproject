@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chimpers Reactions Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+
+        #gifContainer {
+            position: relative;
+            display: inline-block;
+        }
+
+        #overlayContainer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        #overlayContainer img {
+            height: 200px;
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <h1>Chimpers Reactions Generator</h1>
+
+    <div>
+        <h2>Select Chimper</h2>
+        <label for="gifNumber">Chimper #(1-5555): </label>
+        <input type="number" id="gifNumber" min="1" max="5555" value="2956">
+        <button onclick="displayGif()">Refresh GIF</button>
+    </div>
+
+    <div id="gifContainer">
+        <img id="gif" src="" alt="GIF will be displayed here">
+        <div id="overlayContainer"></div>
+    </div>
+
+    <h2>Select reaction (1-22)</h2>
+    <label for="overlayNumber">Reaction Number: </label>
+    <input type="number" id="overlayNumber" min="1" max="22" value="1">
+    <button onclick="displayOverlay()">Refresh Reaction</button>
+
+    <h2>Download Result</h2>
+    <div>
+        <button onclick="downloadGif()">Download as GIF</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.min.js"></script>
+
+    <script>
+        function displayGif() {
+            const gifNumber = document.getElementById('gifNumber').value;
+            const gifUrl = `https://r3bel-gifs-prod.s3.us-east-2.amazonaws.com/chimpers-main-portrait/${gifNumber}.gif`;
+            const gifImage = document.getElementById('gif');
+            gifImage.src = gifUrl;
+
+            gifImage.onload = () => {
+                const overlayContainer = document.getElementById('overlayContainer');
+                overlayContainer.style.left = `${(gifImage.clientWidth - overlayContainer.clientWidth) / 2}px`;
+            };
+        }
+
+        function displayOverlay() {
+            const overlayNumber = document.getElementById('overlayNumber').value;
+            const overlayContainer = document.getElementById('overlayContainer');
+            overlayContainer.innerHTML = `<img src="/${overlayNumber}.png" />`;
+        }
+
+        async function downloadGif() {
+            const container = document.getElementById('gifContainer');
+
+            // Ensure the GIF image is fully loaded before capturing
+            const gifImage = document.getElementById('gif');
+            if (!gifImage.complete) {
+                await new Promise(resolve => gifImage.onload = resolve);
+            }
+
+            html2canvas(container).then(async canvas => {
+                const workerBlob = await fetch('https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js')
+                    .then(response => {
+                        if (!response.ok) throw new Error("Network response was not OK");
+                        return response.blob();
+                    });
+
+                const gif = new GIF({
+                    workers: 4,
+                    workerScript: URL.createObjectURL(workerBlob),
+                    quality: 10,
+                    width: container.clientWidth,
+                    height: container.clientHeight
+                });
+
+                gif.addFrame(canvas, { delay: 200 });
+
+                gif.on('finished', function (blob) {
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = 'image.gif';
+                    link.click();
+                });
+
+                gif.render();
+            });
+        }
+
+        displayGif();
+        displayOverlay();
+    </script>
+
+</body>
+
+</html>
